@@ -1,0 +1,32 @@
+[package]
+name = "flock-index"
+version = "0.1.0"
+edition = "2021"
+description = "On-chain index engine for the Flock index cooperative on Solana"
+license = "MIT"
+repository = "https://github.com/nirholas/flock-protocol"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "flock_index"
+
+[features]
+no-entrypoint = []
+test-sbf = []
+
+[dependencies]
+solana-program = "2"
+spl-token = { version = "7", features = ["no-entrypoint"] }
+borsh = "1"
+bytemuck = { version = "1.25.2", features = ["derive"] }
+
+[dev-dependencies]
+litesvm = "0.6"
+solana-sdk = "2"
+spl-associated-token-account = { version = "6", features = ["no-entrypoint"] }
+
+[lints.rust]
+# `entrypoint!` expands to cfg checks for `target_os = "solana"` and the loader's optional
+# custom-heap/custom-panic features, none of which this crate declares. The warnings are the
+# macro's, not this code's, and silencing them keeps a real warning visible.
+unexpected_cfgs = { level = "allow" }
