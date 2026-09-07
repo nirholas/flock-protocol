@@ -1028,6 +1028,7 @@ dependencies = [
  "borsh 1.8.1",
  "bytemuck",
  "litesvm",
+ "serde_json",
  "solana-program",
  "solana-sdk",
  "spl-associated-token-account",
