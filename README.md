@@ -47,8 +47,8 @@ scripts/deploy.mjs deploys the program and records the id and binary hash
 
 ```bash
 pnpm install
-cd program && cargo build-sbf && cargo test      # 23 tests: unit, lifecycle, adversarial
-cd .. && pnpm -r build && pnpm -r test           # SDK, CLI and keeper
+pnpm program:test        # 24 tests: unit, lifecycle, adversarial, cross-language fixtures
+pnpm -r build && pnpm -r test   # SDK, CLI and keeper
 ```
 
 The program tests run against the real `flock_index.so` in a real SVM, with the real SPL token
@@ -57,7 +57,7 @@ program. Nothing in this repository is mocked.
 Then, against any cluster:
 
 ```bash
-node scripts/deploy.mjs --cluster devnet
+pnpm deploy -- --cluster devnet
 export FLOCK_PROGRAM_ID=$(jq -r .programId deployments/devnet.json)
 
 flock create --name "My Index" --symbol MYI --weights <mint>=6000,<mint>=4000 --nav-per-token 100
@@ -65,11 +65,30 @@ flock issue <indexMint> 10
 flock inspect <indexMint>
 ```
 
+The deploy script builds the program itself, for the SBPF version a cluster will actually execute.
+See [program/README.md](program/README.md) for why that is not the toolchain's default.
+
 ## Status
 
-Unaudited, and deployed nowhere. `deployments/` is empty for that reason and every app reads the
-program id from an environment variable rather than a constant nobody can verify. Read
-[docs/security.md](docs/security.md) before putting anything real in it.
+Unaudited, and not deployed to a public cluster. `deployments/` is empty for that reason and every
+app reads the program id from an environment variable rather than a constant nobody can verify.
+Read [docs/security.md](docs/security.md) before putting anything real in it.
+
+It has been run end to end against a local validator, which is how the two bugs the unit tests
+could not see were found: the first issuance quoted zero (units were derived from vaults that are
+empty until somebody issues, rather than from the seed recipe), and the fee token account was
+derived with its mint and owner the wrong way round. Both are fixed and both now have regression
+tests. The lifecycle that run exercised, with real SPL mints and the deployed program:
+
+```
+create   ->  index mint, account, two components, sealed
+issue    ->  pays 20.000000 of a 6-decimal component and 5.000000 of a 9-decimal one for 10 tokens
+inspect  ->  supply 10.000000, units 2.000000 and 0.500000 per token
+redeem   ->  returns 7.999996 and 1.999999 for 4 tokens
+```
+
+The last line is the streaming fee, visible in real numbers: 95 bps had been accruing while the
+session ran, so four tokens redeemed for slightly less than four tokens' worth of the recipe.
 
 ## Reading order
 

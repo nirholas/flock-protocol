@@ -7,9 +7,9 @@
   "scripts": {
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "program:build": "cd program && cargo build-sbf",
-    "program:test": "cd program && cargo test",
+    "program:build": "cd program && touch src/lib.rs && cargo build-sbf --arch v1",
+    "program:test": "cd program && touch src/lib.rs && cargo build-sbf --arch v1 && cargo test",
     "keeper": "pnpm --filter @flock/keeper start",
-    "api": "pnpm --filter @flock/api start"
+    "deploy": "node scripts/deploy.mjs"
   }
 }

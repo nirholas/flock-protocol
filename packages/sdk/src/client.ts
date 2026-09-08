@@ -109,7 +109,13 @@ export class FlockClient {
       account,
       supply,
       balances,
-      units: balances.map((balance) => unitsFromBalance(balance, supply)),
+      // Before the first issuance the vaults are empty, so there is nothing to derive units from.
+      // The stored units are the seed recipe in exactly that case, and using them is what makes a
+      // first issuance quotable: derived units would be zero and every quote would be zero with it.
+      units:
+        supply === 0n
+          ? account.components.map((component) => component.units)
+          : balances.map((balance) => unitsFromBalance(balance, supply)),
       pendingFee: streamingFeeTokens(supply, account.streamingFeeBps, asOf - account.lastFeeAccrual),
       asOf,
     };
@@ -123,7 +129,7 @@ export class FlockClient {
    */
   quoteIssue(snapshot: IndexSnapshot, amount: bigint): { required: bigint[]; feeTokens: bigint } {
     const supplyAfterFee = snapshot.supply + snapshot.pendingFee;
-    const units = snapshot.balances.map((balance) => unitsFromBalance(balance, supplyAfterFee));
+    const units = this.unitsAt(snapshot, supplyAfterFee);
     const feeTokens = mulDivCeil(amount, BigInt(snapshot.account.issueFeeBps), BPS);
     const gross = amount + feeTokens;
     return { required: units.map((u) => unitsIn(u, gross)), feeTokens };
@@ -131,10 +137,19 @@ export class FlockClient {
 
   quoteRedeem(snapshot: IndexSnapshot, amount: bigint): { payout: bigint[]; feeTokens: bigint } {
     const supplyAfterFee = snapshot.supply + snapshot.pendingFee;
-    const units = snapshot.balances.map((balance) => unitsFromBalance(balance, supplyAfterFee));
+    const units = this.unitsAt(snapshot, supplyAfterFee);
     const feeTokens = mulDivCeil(amount, BigInt(snapshot.account.redeemFeeBps), BPS);
     const net = amount - feeTokens;
     return { payout: units.map((u) => unitsOut(u, net)), feeTokens };
+  }
+
+  /**
+   * Units per index token at a given supply, the same way the program decides them: derived from
+   * the vaults once there is a supply to divide by, and the stored seed recipe before that.
+   */
+  private unitsAt(snapshot: IndexSnapshot, supply: bigint): bigint[] {
+    if (supply === 0n) return snapshot.account.components.map((component) => component.units);
+    return snapshot.balances.map((balance) => unitsFromBalance(balance, supply));
   }
 
   /** NAV per whole index token, in USD-e9, given a price per whole component token. */
@@ -209,7 +224,7 @@ export class FlockClient {
       user,
       indexMint: snapshot.indexMint,
       userIndexAccount: getAssociatedTokenAddressSync(snapshot.indexMint, user),
-      feeAccount: getAssociatedTokenAddressSync(snapshot.account.feeRecipient, user, true),
+      feeAccount: getAssociatedTokenAddressSync(snapshot.indexMint, snapshot.account.feeRecipient, true),
       components: snapshot.account.components.map((component) => ({
         mint: component.mint,
         tokenAccount: getAssociatedTokenAddressSync(component.mint, user),

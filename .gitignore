@@ -7,3 +7,5 @@ target/
 .DS_Store
 program/target/
 keys/*.json
+# A local validator's ledger is thrown away with the session; its addresses mean nothing to anyone else.
+deployments/localnet.json

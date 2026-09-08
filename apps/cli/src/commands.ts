@@ -369,7 +369,7 @@ export async function redeem(
       user: payer.publicKey,
       amount,
       slippageBps,
-      feeAccount: getAssociatedTokenAddressSync(snapshot.account.feeRecipient, indexMint, true),
+      feeAccount: getAssociatedTokenAddressSync(indexMint, snapshot.account.feeRecipient, true),
     }),
   );
   snapshot.account.components.forEach((component, i) => {

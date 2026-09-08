@@ -5,12 +5,42 @@ The Solana program behind a Flock index. Native Rust, no framework, one account 
 ## Build and test
 
 ```bash
-cargo build-sbf     # writes target/deploy/flock_index.so
-cargo test          # unit tests, then both integration suites against that .so in litesvm
+touch src/lib.rs && cargo build-sbf --arch v1   # what the tests execute
+cargo test                                     # unit tests, then both suites against that .so
 ```
 
+From the repository root, `pnpm program:test` does both.
+
 `cargo test` loads the binary from `target/deploy`, so a source change that has not been rebuilt for
-SBF will test the previous build. Run `cargo build-sbf` first whenever the handlers change.
+SBF will test the previous build.
+
+### The SBPF version, which will waste an hour if you meet it cold
+
+The two runtimes this program has to satisfy disagree about which SBPF versions may execute:
+
+| Runtime | Accepts |
+|---|---|
+| litesvm 0.6 (the test harness) | v0, v1 |
+| A current validator or public cluster | v1 and up; **v0 is refused** |
+
+So the tests run a **v1** build and `scripts/deploy.mjs` builds **v3**, which is why the deploy
+script does its own build rather than trusting whatever is on disk.
+
+Two traps come with that:
+
+- A v0 binary (the toolchain's default) is refused at deploy time with *"Detected sbpf_version
+  required by the executable which are not enabled"*, surfacing as `invalid account data for
+  instruction`. It reads like a corrupt account and is a build flag.
+- **`--arch` is not part of cargo-build-sbf's cache key.** Switching versions without touching a
+  source file silently leaves the previous binary in place, so every command here touches
+  `src/lib.rs` first.
+
+The harness reads the ELF `e_flags` and fails with both of those explained rather than letting a
+mismatched binary come back as a bare `InvalidAccountData` from inside the VM.
+
+Closing the gap properly means moving the crate to solana-program 3.x so the harness can run
+litesvm 0.16, which shares a runtime with current validators. That is a dependency migration, not a
+patch, and it is the next thing worth doing here.
 
 ## Files
 

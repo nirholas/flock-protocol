@@ -29,9 +29,27 @@ pub struct Env {
 
 pub fn program_binary() -> Vec<u8> {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/target/deploy/flock_index.so");
-    std::fs::read(path).unwrap_or_else(|e| {
-        panic!("{path} is missing ({e}). Build it first with `cargo build-sbf`.");
-    })
+    let bytes = std::fs::read(path).unwrap_or_else(|e| {
+        panic!("{path} is missing ({e}). Build it first with `cargo build-sbf --arch v1`.");
+    });
+    let version = sbpf_version(&bytes);
+    // The two runtimes this program meets disagree about SBPF versions: litesvm 0.6 executes v0 and
+    // v1, while current validators refuse v0 outright, which is why `scripts/deploy.mjs` builds v3.
+    // Without this check a v3 binary fails here as a bare `InvalidAccountData` from inside the VM,
+    // which looks like a bug in the program and is not.
+    assert!(
+        version <= 1,
+        "{path} is sbpf v{version}, which this runtime cannot execute. Rebuild for tests with:\n  \
+         touch program/src/lib.rs && cargo build-sbf --arch v1\n\
+         (`--arch` is not part of cargo-build-sbf's cache key, so the touch is what forces it.)"
+    );
+    bytes
+}
+
+/// The SBPF version a built program requires, read from the ELF header's `e_flags`.
+fn sbpf_version(bytes: &[u8]) -> u32 {
+    assert!(bytes.len() > 52 && &bytes[..4] == b"\x7fELF", "not an ELF binary");
+    u32::from_le_bytes([bytes[48], bytes[49], bytes[50], bytes[51]])
 }
 
 impl Env {
