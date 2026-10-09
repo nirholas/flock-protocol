@@ -99,3 +99,7 @@ session ran, so four tokens redeemed for slightly less than four tokens' worth o
 5. [docs/security.md](docs/security.md) - what a compromised key gets you
 
 MIT.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=nirholas/flock-protocol&type=Date)](https://www.star-history.com/#nirholas/flock-protocol&Date)
