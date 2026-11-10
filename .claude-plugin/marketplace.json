@@ -7,8 +7,9 @@
   "plugins": [
     {
       "name": "flock-protocol",
-      "source": "./",
+      "source": "./plugins/flock-protocol",
       "description": "Operate the Flock index engine on Solana: inspect indexes, issue and redeem in kind, propose rebalance auctions.",
+      "category": "development",
       "tags": [
         "solana",
         "index-fund",
